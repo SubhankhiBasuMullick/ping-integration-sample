@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="An example integration between Ping Identity services and a custom app, including Terraform HCL to auto-provision and configure a sample PingOne environment.">
+  <title>Ping Identity Integration Example Application</title>
+  <link rel="shortcut icon" type="/image/x-icon" href="/images/favicon.ico">
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <img class="background" src="/images/background.png" alt="Background" />
+  <section class="container">
+    <div class="header">
+      <div class="logo"><img src="images/logo.png" width="300" alt="Ping Identity" /></div>
+      <div class="header-text">
+        <div class="title">Developer Experience</div>
+        <div class="subtitle">PingOne DaVinci API Protect Sample App</div>
+      </div>
+    </div>
+    <div class="content">
+      <h1>Welcome!</h1>
+      <div id="error-msg"></div>
+      <br>
+      <div id="container">
+        <form id="registrationForm">
+          <input type="text" required id="userName" name="userName" placeholder="Username" />
+          <input type="password" required id="password" name="password" placeholder="Password" />
+          <button type="submit" id="registration" class="btn">Submit</button>
+        </form>
+    </div>
+    </div>
+  </section>
+  <script src="global.js"></script>
+  <script src="https://assets.pingone.com/davinci/latest/davinci.js"></script>
+  <!-- PingOne Protect Signals SDK -->
+  <script type="text/javascript" src="https://assets.pingone.com/signals/web-sdk/5.5.0/signals-sdk.js" defer></script>
+  <script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', async () => {
+      const companyId = "27fc68b5-92bb-4618-b494-4fe7717a6ba2";
+      const dvApiKey = "61fbea1ea642a923315ac57d46210d32f15b59f82a60e33a7ff9b69d10a6a3f338de89047673518ddb5b715fad39559619b9c8b58c9682af6562ef6857605ed59ae7fb26f81e8d2f3c79dbc58ce8acfa9f42f0090ae91e8728f6692c1a5df8026253eafa58cdb5e100d2acfecb6a21790af35c3dc9d150d66516e7ffd7fd2fc5"; 
+      const policyId = "4605f3a2f93b5971ccab0b5447f06c91";
+      const pingOneEnvId = "27fc68b5-92bb-4618-b494-4fe7717a6ba2";
+      const pingOneDomain = "auth.clientaccessdev.rjf.com"; // PingOne Domain based on region
+
+      function onPingOneSignalsReady(callback) {
+          if (window['_pingOneSignalsReady']) {
+              callback();
+          } else {
+              document.addEventListener('PingOneSignalsReadyEvent', callback);
+          }
+        }
+
+        // onPingOneSignalsReady(function () {
+        //   _pingOneSignals.initSilent({
+        //       envId : pingOneEnvId
+        //   }).then(function () {
+        //       console.log("PingOne Signals initialized successfully");
+        //   }).catch(function (e) {
+        //       console.error("SDK Init failed", e);
+        //   });
+        // });
+
+        onPingOneSignalsReady(function () {
+  _pingOneSignals.init({
+    behavioralDataCollection: true,
+    universalDeviceIdentification: true
+  }).then(async function () {
+    console.log("PingOne Signals initialized successfully");
+    console.log("PingOne Signals object:", _pingOneSignals);
+console.log("Available methods:", Object.keys(_pingOneSignals || {}));
+
+
+    try {
+      const riskData = await _pingOneSignals.getData();
+      console.log("get data completed:", riskData);
+      window._riskData = riskData; // store it globally for later use
+    } catch (e) {
+      console.error('getData Error!', e);
+    }
+  }).catch(function (e) {
+    console.error("SDK Init failed", e);
+  });
+});
+
+
+
+      document.getElementById('registrationForm').addEventListener('submit', function (event) { event.preventDefault(); startDVFlow(window._riskData);});
+
+      function startDVFlow(){
+        const dvStartUrl =
+            'https://orchestrate-api.pingone.com' + '/v1/company/' +
+            companyId + '/policy/' + policyId + '/start';
+
+            console.log("url", dvStartUrl);
+
+            //*** Add the API Key from your DaVinci application. ***/
+            var headers = new Headers();
+            headers.append('X-SK-API-KEY', dvApiKey);
+            headers.append('Content-Type', 'application/json');
+
+            //*** Add parameters required in Davinci flow input schema. ***/
+            var body = {
+              userName: document.getElementById('userName').value,
+              password: document.getElementById('password').value,
+              ipAddress: "49.145.70.130",
+              userAgent: "chrome",
+              protectPayload: window._riskData,
+              applicationName: "ClientAccessWeb"
+            }
+
+            var payload = JSON.stringify(body);
+            
+            var requestOptions = {
+              method: 'POST',
+              headers: headers,
+              redirect: 'manual',
+              body: payload
+            };
+
+            fetch(dvStartUrl, requestOptions)
+              .then(response => response.json())
+              .then((responseData) => {
+                if (responseData.success) {
+                  console.log("responseData", responseData);
+                  // Set email and the risk response in sessionStorage so it can be displayed on dashboard
+                  sessionStorage.setItem('userName', responseData.parameters.userName);
+                  sessionStorage.setItem('riskResponse', JSON.stringify(responseData.additionalProperties));
+                  window.location.assign(window.location.origin + '/dashboard.html');
+                } else {
+                  document.getElementById("error-msg").innerHTML = responseData?.additionalProperties.message;
+                }
+              })
+              .catch(error => console.log(error));
+      }      
+    })
+  </script>
+</body>
+</html>

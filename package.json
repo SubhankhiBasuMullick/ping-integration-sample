@@ -1,0 +1,23 @@
+{
+    "name": "oidc-implicit-sample",
+    "version": "0.0.3",
+    "private": true,
+    "description": "Simple Javascript client that implements the OpenID Connect implicit flow",
+    "keywords": [
+      "openidconnect"
+    ],
+    "homepage": "https://github.com/pingidentity/pingone-sample-js",
+    "dependencies": {
+      "@ping-identity/p14c-js-sdk-auth": "^1.0.0-pre.2",
+      "http-server": "^14.1.0"
+    },
+    "scripts": {
+      "start": "http-server",
+      "build": "cp node_modules/@ping-identity/p14c-js-sdk-auth/dist/browser/@ping-identity/p14c-js-sdk-auth.js p14c-js-sdk-auth.js"
+    },
+    "ignore": [
+      "**/.*",
+      "node_modules"
+    ]
+  }
+  
